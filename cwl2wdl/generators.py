@@ -204,6 +204,7 @@ workflow %s {
             template = """
    output {
      %s
+   }
 """
             outputs = []
             for outp in self.outputs:
