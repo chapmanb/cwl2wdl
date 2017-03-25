@@ -171,6 +171,8 @@ task %s {
 class WdlWorkflowGenerator(object):
     def __init__(self, workflow):
         self.template = """
+%s
+
 workflow %s {
     %s
     %s
@@ -184,7 +186,8 @@ workflow %s {
         self.steps = workflow.steps
         self.subworkflows = workflow.subworkflows
         self.task_ids = []
-        self.imported_tasks = []
+        self.imported_wfs = []
+        self.prepped_tasks = []
 
     def __format_inputs(self):
         inputs = []
@@ -208,7 +211,9 @@ workflow %s {
 """
             outputs = []
             for outp in self.outputs:
-                outputs.append(outp.name)
+                outputs.append("%s %s = %s" % (outp.variable_type,
+                                               outp.name.split(".")[-1],
+                                               outp.name))
             return template % "\n     ".join(outputs)
 
     def __format_steps(self):
@@ -217,9 +222,13 @@ workflow %s {
             self.task_ids.append(step.task_id)
 
             if step.task_definition is not None:
-                task_gen = (WdlTaskGenerator(step.task_definition) if step.step_type == "task"
-                            else WdlWorkflowGenerator(step.task_definition))
-                self.imported_tasks.append(task_gen.generate_wdl())
+                if step.step_type == "task":
+                    task_gen = WdlTaskGenerator(step.task_definition)
+                    self.prepped_tasks.append(task_gen.generate_wdl())
+                else:
+                    base_task_id = step.task_id.split(".")[-1]
+                    self.imported_wfs.append('import "%s.wdl" as %s' % (base_task_id,
+                                                                        base_task_id))
 
             if step.inputs != []:
                 step_template = """
@@ -256,8 +265,9 @@ workflow %s {
         return body
 
     def generate_wdl(self):
-        wdl = self.template % (self.name, self.__format_inputs(), self.__format_steps(),
-                               self.__format_outputs(),
-                               "\n".join(self.imported_tasks))
+        inputs, steps, outputs = self.__format_inputs(), self.__format_steps(), self.__format_outputs()
+        wdl = self.template % ("\n".join(self.imported_wfs),
+                               self.name, inputs, steps, outputs,
+                               "\n".join(self.prepped_tasks))
 
         return wdl
