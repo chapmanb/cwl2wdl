@@ -24,15 +24,17 @@ setup(
         'Topic :: Scientific/Engineering :: Bio-Informatics',
     ],
     keywords='workflow tool',
-    install_requires=["wdl==1.0.22"],
+    #install_requires=["wdl==1.0.22"],
     entry_points={
         'console_scripts': [
             'cwl2wdl=cwl2wdl.main:cli'
         ]
     },
+    # Manually set version to avoid setuptools_scm problems in bioconda
+    version='0.1.dev44',
     # Use setuptools_scm to set the version number automatically from Git
-    setup_requires=['setuptools_scm'],
-    use_scm_version={
-        "write_to": "cwl2wdl/_version.py"
-    },
+    #setup_requires=['setuptools_scm'],
+    #use_scm_version={
+    #    "write_to": "cwl2wdl/_version.py"
+    #},
 )

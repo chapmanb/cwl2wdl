@@ -10,7 +10,6 @@ import os
 import warnings
 
 import argparse
-import wdl.parser
 
 import cwl2wdl
 from cwl2wdl.generators import WdlTaskGenerator, WdlWorkflowGenerator
@@ -72,12 +71,14 @@ def cli():
     wdl_doc = str("\n".join(wdl_parts))
 
     if arguments.validate:
+        import wdl.parser
         try:
             is_validated = wdl.parser.parse(wdl_doc)
         except Exception as e:
             raise e
 
     if arguments.format == "ast":
+        import wdl.parser
         warnings.warn("By specifying 'ast' format you are implicity imposing validation.")
         ast = wdl.parser.parse(wdl_doc).ast()
         print(ast.dumps(indent=2))
