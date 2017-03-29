@@ -111,6 +111,7 @@ class SubWorkflow(object):
         self.inputs = [StepInput(i) for i in step['inputs']]
         self.outputs = [StepOutput(o) for o in step['outputs']]
         self.scatter = step.get("scatter", [])
+        self.prescatter = step.get("prescatter", {})
 
 class Step(object):
     def __init__(self, workflow_step):
@@ -121,7 +122,7 @@ class Step(object):
         self.inputs = [StepInput(i) for i in workflow_step['inputs']]
         self.outputs = [StepOutput(o) for o in workflow_step['outputs']]
         self.scatter = workflow_step.get("scatter", [])
-
+        self.prescatter = workflow_step.get("prescatter", {})
 
 class StepInput(object):
     def __init__(self, input_dict):

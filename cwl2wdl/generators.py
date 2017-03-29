@@ -243,7 +243,7 @@ workflow %s {
                         "%s%s=%s" % (pad, re.sub(step.task_id + "\.", "", inp.input_id),
                                      inp.value)
                     )
-                steps.append(self._format_scatter(step.scatter,
+                steps.append(self._format_scatter(step.scatter, self._format_prescatter(step.prescatter) +
                                                   step_template % (step.task_id, ", \n".join(inputs))))
             else:
                 step_template = "call %s"
@@ -263,6 +263,23 @@ workflow %s {
 """
             body = template % ("\n             ".join(scatter_parts), "\n".join(parts))
         return body
+
+    def _format_prescatter(self, prescatter):
+        """Provide a pre-call scattering to split apart Array[Object] attributes.
+        """
+        out = ""
+        template = """
+scatter (%s in %s) {
+%s
+}
+"""
+        for base_rec, attrs in prescatter.items():
+            base_rec_item = "%s_item" % base_rec.replace(".", "_")
+            unpack_attrs = []
+            for new_name, orig_attr, vartype in attrs:
+                unpack_attrs.append("  %s %s = %s.%s" % (vartype, new_name, base_rec_item, orig_attr))
+            out += template % (base_rec_item, base_rec, "\n".join(unpack_attrs))
+        return out
 
     def generate_wdl(self):
         inputs, steps, outputs = self.__format_inputs(), self.__format_steps(), self.__format_outputs()
