@@ -9,7 +9,7 @@ import re
 
 
 class WdlTaskGenerator(object):
-    def __init__(self, task):
+    def __init__(self, task, structs=None):
         self.template = """
 task %s {
     %s
@@ -33,6 +33,7 @@ task %s {
         self.outputs = task.outputs
         self.requirements = task.requirements
         self.stdin = task.stdin
+        self.structs = structs if structs else []
         self.stdout = task.stdout
 
     def __format_inputs(self):
@@ -47,6 +48,12 @@ task %s {
             inputs.append(template % (variable_type,
                                       var.name))
         return "\n    ".join(inputs)
+
+    def _is_struct(self, vtype):
+        """Check if a variable is a struct, in which case we dump to output file.
+        """
+        vtype = vtype.replace("Array[", "").replace("]", "")
+        return vtype in [x.name for x in self.structs]
 
     def __format_command(self):
         command_position = [0]
@@ -80,6 +87,12 @@ task %s {
                     continue
                 else:
                     pass
+
+            # Dump structs to a serialized JSON file using standard library function
+            if self._is_struct(command_input.variable_type):
+                command_position.append(command_input.position)
+                command_parts.append("${write_struct(%s)}" % command_input.name)
+                continue
 
             if command_input.name == self.stdout:
                 continue
@@ -172,6 +185,7 @@ class WdlWorkflowGenerator(object):
     def __init__(self, workflow):
         self.template = """
 %s
+%s
 
 workflow %s {
     %s
@@ -185,6 +199,7 @@ workflow %s {
         self.outputs = workflow.outputs
         self.steps = workflow.steps
         self.subworkflows = workflow.subworkflows
+        self.structs = workflow.structs
         self.task_ids = []
         self.imported_wfs = []
         self.prepped_tasks = []
@@ -223,7 +238,7 @@ workflow %s {
 
             if step.task_definition is not None:
                 if step.step_type == "task":
-                    task_gen = WdlTaskGenerator(step.task_definition)
+                    task_gen = WdlTaskGenerator(step.task_definition, self.structs)
                     self.prepped_tasks.append(task_gen.generate_wdl())
                 else:
                     base_task_id = step.task_id.split(".")[-1]
@@ -281,9 +296,23 @@ scatter (%s in %s) {
             out += template % (base_rec_item, base_rec, "\n".join(unpack_attrs))
         return out
 
+    def __format_structs(self):
+        out = ""
+        for struct in self.structs:
+            template = """
+struct %s {
+%s
+}
+"""
+            out += template % (struct.name, ",\n".join([" %s: %s" % (k, v) for k, v in struct.fields.items()]))
+        if out:
+            out = "\n" + out
+        return out
+
     def generate_wdl(self):
         inputs, steps, outputs = self.__format_inputs(), self.__format_steps(), self.__format_outputs()
-        wdl = self.template % ("\n".join(self.imported_wfs),
+        structs = self.__format_structs()
+        wdl = self.template % ("\n".join(self.imported_wfs), structs,
                                self.name, inputs, steps, outputs,
                                "\n".join(self.prepped_tasks))
 

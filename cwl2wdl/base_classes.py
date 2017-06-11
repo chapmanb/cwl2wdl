@@ -74,6 +74,7 @@ class Command(object):
 class Argument(object):
     def __init__(self, argument_dict):
         self.prefix = argument_dict['prefix']
+        self.separate = argument_dict.get("separate", False)
         self.position = argument_dict['position']
         self.value = argument_dict['value']
 
@@ -91,6 +92,10 @@ class Requirement(object):
         self.requirement_type = cwl_requirement['requirement_type']
         self.value = cwl_requirement['value']
 
+class Struct(object):
+    def __init__(self, name, fields):
+        self.name = name
+        self.fields = fields
 
 class Workflow(object):
     def __init__(self, parsed_workflow):
@@ -98,6 +103,7 @@ class Workflow(object):
         self.inputs = [Input(i) for i in parsed_workflow['inputs']]
         self.outputs = [Output(o) for o in parsed_workflow['outputs']]
         self.steps = [Step(s) for s in parsed_workflow['steps']]
+        self.structs = [Struct(k, v) for k, v in parsed_workflow.get('structs', {}).items()]
         self.subworkflows = [SubWorkflow(w) for w in parsed_workflow.get("subworkflows", [])]
         self.requirements = [Requirement(r) for r in parsed_workflow['requirements']]
 
